@@ -154,47 +154,39 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Health check endpoint
+// Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'video-chat-render',
-        port: PORT,
         peerjs: 'active',
         environment: process.env.NODE_ENV || 'development'
     });
 });
 
-// Get server info
-app.get('/api/info', (req, res) => {
-    const users = getUsers();
-    res.json({
-        usersCount: users.length,
-        uptime: process.uptime(),
-        peerjs: {
-            enabled: true,
-            path: '/peerjs'
-        },
-        api: {
-            register: '/api/register',
-            login: '/api/login',
-            health: '/api/health'
-        }
-    });
-});
+// === ВАЖНО: Все API маршруты ДО catch-all маршрута ===
 
-// Test PeerJS endpoint
-app.get('/api/test-peer', (req, res) => {
-    res.json({
-        peerjs: 'running',
-        path: '/peerjs',
-        note: 'Use WebSocket for real-time connections'
-    });
-});
+// Serve index.html для всех остальных маршрутов (только GET запросы!)
+app.get('*', (req, res, next) => {
+    // Пропускаем API маршруты и файлы
+    if (req.path.startsWith('/api/') ||
+        req.path.startsWith('/peerjs/') ||
+        req.path.includes('.') || // файлы с расширениями
+        req.method !== 'GET') {
+        return next();
+    }
 
-// Serve index.html for all routes (SPA)
-app.get('*', (req, res) => {
+    console.log(`📄 Serving index.html for: ${req.path}`);
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Обработка 404 для API
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        error: 'API endpoint not found',
+        path: req.path
+    });
 });
 
 // Start server
@@ -202,15 +194,13 @@ server.listen(PORT, () => {
     console.log('=================================');
     console.log('🚀 SERVER STARTED SUCCESSFULLY!');
     console.log(`📍 Port: ${PORT}`);
-    console.log(`📡 PeerJS WebSocket: /peerjs`);
+    console.log(`📡 PeerJS: /peerjs`);
     console.log(`🔐 API: /api/*`);
-    console.log(`🌐 Web: http://localhost:${PORT}`);
-    console.log('=================================');
-    console.log('✅ PeerJS integrated with Express');
-    console.log('✅ No port conflicts');
-    console.log('✅ Ready for WebRTC connections');
+    console.log(`📁 Static: /public/*`);
     console.log('=================================');
 });
+
+
 
 // Обработка ошибок сервера
 server.on('error', (error) => {

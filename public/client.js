@@ -5,6 +5,12 @@ const IS_RENDER = SERVER_URL.includes('render.com') || SERVER_URL.includes('onre
 console.log('🌐 Server URL:', SERVER_URL);
 console.log('🔍 Is Render:', IS_RENDER);
 
+// Проверяем, что мы на правильном URL
+console.log('📄 Current path:', window.location.pathname);
+
+// Дебаг информация
+console.log('🔄 Full URL:', window.location.href);
+
 // Настройки PeerJS для ExpressPeerServer
 const PEER_CONFIG = {
     host: window.location.hostname,
