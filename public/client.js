@@ -1,14 +1,15 @@
-// ==========================================
-// АВТООПРЕДЕЛЕНИЕ URL СЕРВЕРА
-// ==========================================
+// Автоопределение URL для Render
 const SERVER_URL = window.location.origin;
 const IS_RENDER = SERVER_URL.includes('render.com') || SERVER_URL.includes('onrender.com');
+
+console.log('🌐 Server URL:', SERVER_URL);
+console.log('🔍 Is Render:', IS_RENDER);
 
 // Настройки PeerJS
 let PEER_HOST, PEER_PORT, PEER_SECURE;
 
 if (IS_RENDER) {
-    // Для Render используем тот же хост
+    // Для Render
     const url = new URL(SERVER_URL);
     PEER_HOST = url.hostname;
     PEER_PORT = 443; // Render всегда HTTPS
@@ -20,12 +21,11 @@ if (IS_RENDER) {
     PEER_SECURE = window.location.protocol === 'https:';
 }
 
-console.log('🌐 Config:', {
-    SERVER_URL,
-    PEER_HOST,
-    PEER_PORT,
-    PEER_SECURE,
-    IS_RENDER
+console.log('⚙️ PeerJS Config:', {
+    host: PEER_HOST,
+    port: PEER_PORT,
+    secure: PEER_SECURE,
+    path: '/peerjs'
 });
 
 // ==========================================
