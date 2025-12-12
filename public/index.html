@@ -3,77 +3,247 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Server Messenger</title>
+    <title>Видеозвонок | Render</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        video { transform: scaleX(-1); object-fit: cover; width: 100%; height: 100%; }
-        .modal { transition: opacity 0.3s ease; }
+        video {
+            transform: scaleX(-1);
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+        #local-video {
+            border: 2px solid #4F46E5;
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
+        }
+        #remote-video {
+            background: #000;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
-
-<div id="auth-overlay" class="absolute inset-0 z-50 bg-gray-900 flex items-center justify-center p-4">
-    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-sm border border-gray-700">
-        <h1 class="text-2xl font-bold mb-2 text-center text-indigo-500">Private Server <i class="fas fa-server"></i></h1>
-        <p class="text-xs text-gray-500 text-center mb-6">Авторизация через ваш Node.js сервер</p>
+<body class="bg-gradient-to-br from-gray-900 to-black text-gray-100 min-h-screen">
+<!-- Auth Overlay -->
+<div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="glass rounded-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mb-4">
+                <i class="fas fa-video text-2xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                Видеозвонок
+            </h1>
+            <p class="text-gray-400 mt-2">Бесплатный сервер на Render</p>
+        </div>
 
         <div class="space-y-4">
-            <input type="email" id="email" placeholder="Email" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-indigo-500 outline-none">
-            <input type="password" id="password" placeholder="Пароль" class="w-full bg-gray-900 border border-gray-600 rounded p-3 focus:border-indigo-500 outline-none">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                <input type="email" id="email"
+                       class="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="your@email.com">
+            </div>
 
-            <div id="error-msg" class="text-red-500 text-xs text-center h-4"></div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Пароль</label>
+                <input type="password" id="password"
+                       class="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="••••••••">
+            </div>
 
-            <button onclick="auth('login')" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded font-bold transition">Войти</button>
-            <button onclick="auth('register')" class="w-full bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm transition">Регистрация</button>
+            <div id="error-msg" class="text-red-400 text-sm text-center h-6"></div>
+
+            <div class="space-y-3">
+                <button onclick="auth('login')"
+                        class="btn-primary w-full py-3 rounded-xl font-bold text-lg">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Войти
+                </button>
+                <button onclick="auth('register')"
+                        class="w-full bg-gray-800/50 hover:bg-gray-700/50 py-3 rounded-xl font-bold border border-gray-700 transition">
+                    <i class="fas fa-user-plus mr-2"></i>Регистрация
+                </button>
+            </div>
+
+            <div class="text-center text-gray-500 text-sm pt-4 border-t border-gray-800">
+                <p><i class="fas fa-info-circle mr-1"></i>Бесплатный сервер. После 15 мин бездействия засыпает</p>
+            </div>
         </div>
     </div>
 </div>
 
-<div id="main-app" class="hidden flex h-full">
-    <div class="w-1/3 max-w-xs bg-gray-800 border-r border-gray-700 flex flex-col">
-        <div class="p-4 bg-gray-800 border-b border-gray-700">
-            <div id="my-email-display" class="font-bold text-indigo-400 truncate">...</div>
-            <button onclick="logout()" class="text-xs text-red-400 mt-2 hover:underline">Выйти</button>
-        </div>
-
-        <div class="p-4">
-            <label class="text-xs text-gray-500 uppercase">Мой ID</label>
-            <div class="flex gap-2 mt-1">
-                <input type="text" id="my-id" readonly class="w-full bg-gray-900 border border-gray-600 rounded px-2 text-sm text-gray-300">
-                <button onclick="copyId()" class="bg-gray-700 px-3 rounded hover:bg-gray-600"><i class="fas fa-copy"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <div class="flex-1 bg-gray-900 relative flex flex-col items-center justify-center">
-
-        <div id="idle-state" class="text-center p-8">
-            <div class="mb-6 text-gray-600"><i class="fas fa-video-slash text-6xl"></i></div>
-            <h2 class="text-xl font-bold mb-4">Начать звонок</h2>
-            <div class="flex gap-2 max-w-md mx-auto">
-                <input type="text" id="remote-id" placeholder="ID собеседника" class="flex-1 bg-gray-800 border border-gray-600 rounded px-4 py-3 outline-none focus:border-indigo-500">
-                <button onclick="startCall()" class="bg-green-600 hover:bg-green-700 px-6 rounded font-bold"><i class="fas fa-video"></i></button>
-            </div>
-        </div>
-
-        <div id="video-ui" class="hidden absolute inset-0 bg-black">
-            <video id="remote-video" autoplay playsinline></video>
-
-            <div class="absolute top-4 right-4 w-40 h-60 bg-gray-800 rounded border border-gray-600 overflow-hidden shadow-2xl">
-                <video id="local-video" autoplay playsinline muted></video>
-            </div>
-
-            <div class="absolute bottom-8 left-0 right-0 flex justify-center gap-6">
-                <button onclick="endCall()" class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center hover:bg-red-700 shadow-lg transform hover:scale-110 transition">
-                    <i class="fas fa-phone-slash text-2xl"></i>
+<!-- Main App -->
+<div id="main-app" class="hidden h-screen">
+    <!-- Sidebar -->
+    <div class="glass w-80 h-full border-r border-gray-800 flex flex-col">
+        <!-- User Info -->
+        <div class="p-6 border-b border-gray-800">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-xl"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div id="my-email-display" class="font-bold text-lg truncate">...</div>
+                    <div class="flex items-center text-sm text-gray-400">
+                        <i class="fas fa-circle text-xs mr-1" style="color: #10B981;"></i>
+                        <span>Online</span>
+                    </div>
+                </div>
+                <button onclick="logout()"
+                        class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition">
+                    <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
         </div>
+
+        <!-- My ID -->
+        <div class="p-6">
+            <label class="block text-sm font-medium text-gray-300 mb-3">
+                <i class="fas fa-id-card mr-2"></i>Ваш ID для звонков
+            </label>
+            <div class="flex gap-2">
+                <input type="text" id="my-id" readonly
+                       class="flex-1 bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-sm font-mono truncate">
+                <button onclick="copyId()"
+                        class="bg-gray-800 hover:bg-gray-700 w-12 rounded-xl flex items-center justify-center transition">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Дайте этот ID собеседнику для звонка</p>
+        </div>
+
+        <!-- Make Call -->
+        <div class="p-6 border-t border-gray-800 mt-auto">
+            <label class="block text-sm font-medium text-gray-300 mb-3">
+                <i class="fas fa-phone mr-2"></i>Позвонить
+            </label>
+            <div class="flex gap-2">
+                <input type="text" id="remote-id"
+                       class="flex-1 bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       placeholder="ID собеседника">
+                <button onclick="startCall()"
+                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 w-12 rounded-xl flex items-center justify-center transition transform hover:scale-105">
+                    <i class="fas fa-video"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="p-6 text-xs text-gray-500 border-t border-gray-800">
+            <p><i class="fas fa-exclamation-triangle mr-2"></i>Сервер бесплатный, может засыпать</p>
+            <p class="mt-2"><i class="fas fa-wifi mr-2"></i>При проблемах перезагрузите страницу</p>
+        </div>
+    </div>
+
+    <!-- Main Area -->
+    <div class="flex-1 flex flex-col">
+        <!-- Idle State -->
+        <div id="idle-state" class="flex-1 flex flex-col items-center justify-center p-8">
+            <div class="text-center max-w-lg">
+                <div class="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl mb-8 border border-gray-700">
+                    <i class="fas fa-video-slash text-5xl text-gray-600"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-4 bg-gradient-to-r from-gray-300 to-gray-100 bg-clip-text text-transparent">
+                    Готов к звонкам
+                </h2>
+                <p class="text-gray-400 mb-8">
+                    Введите ID собеседника в поле слева и нажмите кнопку видеозвонка.<br>
+                    Или дайте свой ID другу для входящего звонка.
+                </p>
+                <div class="inline-flex items-center space-x-2 text-gray-500">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Для работы нужны камера и микрофон</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video UI -->
+        <div id="video-ui" class="hidden fixed inset-0 bg-black">
+            <!-- Remote Video -->
+            <video id="remote-video" autoplay playsinline></video>
+
+            <!-- Local Video -->
+            <div class="absolute top-6 right-6 w-64 h-48 rounded-2xl overflow-hidden border-2 border-indigo-500 shadow-2xl">
+                <video id="local-video" autoplay playsinline muted></video>
+            </div>
+
+            <!-- Controls -->
+            <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                <div class="flex items-center space-x-4">
+                    <button onclick="endCall()"
+                            class="bg-gradient-to-r from-red-500 to-pink-600 w-20 h-20 rounded-full flex items-center justify-center hover:from-red-600 hover:to-pink-700 shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95">
+                        <i class="fas fa-phone-slash text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Call Info -->
+            <div class="absolute top-6 left-6 glass rounded-2xl px-4 py-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-circle animate-pulse text-green-500"></i>
+                    <span class="font-medium">В звонке</span>
+                    <span id="call-timer" class="ml-4 font-mono">00:00</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- PeerJS -->
 <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script src="client.js"></script>
+
+<script>
+    // Таймер звонка
+    let callStartTime = null;
+    let callTimerInterval = null;
+
+    function startCallTimer() {
+        callStartTime = new Date();
+        clearInterval(callTimerInterval);
+        callTimerInterval = setInterval(() => {
+            if (callStartTime) {
+                const elapsed = new Date() - callStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('call-timer').textContent =
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    }
+
+    function stopCallTimer() {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+        callStartTime = null;
+        document.getElementById('call-timer').textContent = '00:00';
+    }
+
+    // Переопределяем функции для добавления таймера
+    const originalStartVideoSession = window.startVideoSession;
+    window.startVideoSession = function(stream) {
+        originalStartVideoSession(stream);
+        startCallTimer();
+    };
+
+    const originalEndCall = window.endCall;
+    window.endCall = function() {
+        originalEndCall();
+        stopCallTimer();
+    };
+</script>
 </body>
 </html>
