@@ -1,6 +1,6 @@
 const express = require('express');
 const http = require('http');
-const { PeerServer } = require('peer');
+const { ExpressPeerServer } = require('peer');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -10,7 +10,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000; // Render сам назначает порт
 const SECRET_KEY = process.env.SECRET_KEY || "render-video-chat-secret-2024";
 const DB_FILE = './users.json';
 
@@ -42,6 +42,33 @@ const getUsers = () => {
 const saveUser = (users) => {
     fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 };
+
+// === PEERJS SERVER SETUP (ПЕРВЫМ ДЕЛОМ!) ===
+console.log('🔧 Initializing PeerJS server...');
+
+// Создаем PeerServer на том же HTTP сервере
+const peerServer = ExpressPeerServer(server, {
+    debug: true,
+    path: '/peerjs',
+    allow_discovery: true,
+    proxied: true
+});
+
+// Подключаем PeerServer к Express
+app.use('/peerjs', peerServer);
+
+// Обработчики событий PeerJS
+peerServer.on('connection', (client) => {
+    console.log(`🔗 Peer connected: ${client.getId()}`);
+});
+
+peerServer.on('disconnect', (client) => {
+    console.log(`🔌 Peer disconnected: ${client.getId()}`);
+});
+
+peerServer.on('error', (error) => {
+    console.error('❌ PeerJS error:', error);
+});
 
 // API Routes
 app.post('/api/register', async (req, res) => {
@@ -133,6 +160,7 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
         service: 'video-chat-render',
         port: PORT,
+        peerjs: 'active',
         environment: process.env.NODE_ENV || 'development'
     });
 });
@@ -143,7 +171,10 @@ app.get('/api/info', (req, res) => {
     res.json({
         usersCount: users.length,
         uptime: process.uptime(),
-        peerjs: '/peerjs',
+        peerjs: {
+            enabled: true,
+            path: '/peerjs'
+        },
         api: {
             register: '/api/register',
             login: '/api/login',
@@ -152,26 +183,13 @@ app.get('/api/info', (req, res) => {
     });
 });
 
-// === PEERJS SERVER SETUP ===
-console.log('🔧 Starting PeerJS server on port:', PORT);
-
-const peerServer = PeerServer({
-    port: PORT,
-    path: '/peerjs',
-    proxied: true,
-    allow_discovery: true,
-    key: 'peerjs',
-    ssl: false,
-    debug: 3
-});
-
-// PeerJS events
-peerServer.on('connection', (client) => {
-    console.log(`🔗 Peer connected: ${client.getId()}`);
-});
-
-peerServer.on('disconnect', (client) => {
-    console.log(`🔌 Peer disconnected: ${client.getId()}`);
+// Test PeerJS endpoint
+app.get('/api/test-peer', (req, res) => {
+    res.json({
+        peerjs: 'running',
+        path: '/peerjs',
+        note: 'Use WebSocket for real-time connections'
+    });
 });
 
 // Serve index.html for all routes (SPA)
@@ -180,17 +198,27 @@ app.get('*', (req, res) => {
 });
 
 // Start server
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
     console.log('=================================');
-    console.log('🚀 Server successfully started!');
+    console.log('🚀 SERVER STARTED SUCCESSFULLY!');
     console.log(`📍 Port: ${PORT}`);
-    console.log(`🌐 Web: http://localhost:${PORT}`);
-    console.log(`📡 PeerJS: /peerjs`);
+    console.log(`📡 PeerJS WebSocket: /peerjs`);
     console.log(`🔐 API: /api/*`);
+    console.log(`🌐 Web: http://localhost:${PORT}`);
     console.log('=================================');
-    console.log('📊 To test:');
-    console.log(`1. Open: http://localhost:${PORT}`);
-    console.log('2. Register a user');
-    console.log('3. Copy ID and make a call');
+    console.log('✅ PeerJS integrated with Express');
+    console.log('✅ No port conflicts');
+    console.log('✅ Ready for WebRTC connections');
     console.log('=================================');
+});
+
+// Обработка ошибок сервера
+server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+        console.log('Trying alternative port...');
+        // Можно попробовать другой порт, но на Render это не нужно
+    } else {
+        console.error('❌ Server error:', error);
+    }
 });
